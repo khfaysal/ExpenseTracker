@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { auth, db } from './firebase'
 import { onAuthStateChanged, signOut } from 'firebase/auth'
-import { collection, query, onSnapshot, addDoc, deleteDoc, doc } from 'firebase/firestore'
+import { collection, query, onSnapshot, addDoc, deleteDoc, updateDoc, doc } from 'firebase/firestore'
 import AuthModal from './components/AuthModal'
 import './App.css'
 
@@ -79,6 +79,12 @@ function App() {
   const [activeTab, setActiveTab] = useState('daily')
   const [selectedDate, setSelectedDate] = useState(getToday())
 
+  // Edit mode state
+  const [editMode, setEditMode] = useState(false)
+  const [editingExpense, setEditingExpense] = useState(null)
+  const [editAmount, setEditAmount] = useState('')
+  const [editLabel, setEditLabel] = useState('')
+
   // Auth State
   const [user, setUser] = useState(null)
   const [authModalOpen, setAuthModalOpen] = useState(false)
@@ -92,13 +98,16 @@ function App() {
   // Can only add expenses for today or yesterday
   const isEditable = selectedDate === today || selectedDate === yesterday
 
-  // Date navigation
-  const goToPrevDay = () => setSelectedDate((prev) => shiftDate(prev, -1))
+  // Date navigation – limit to last 7 days
+  const sevenDaysAgo = shiftDate(today, -6)
+  const canGoPrev = selectedDate > sevenDaysAgo
+  const canGoNext = selectedDate < today
+
+  const goToPrevDay = () => {
+    if (canGoPrev) setSelectedDate((prev) => shiftDate(prev, -1))
+  }
   const goToNextDay = () => {
-    // Don't allow navigating beyond today
-    if (selectedDate < today) {
-      setSelectedDate((prev) => shiftDate(prev, 1))
-    }
+    if (canGoNext) setSelectedDate((prev) => shiftDate(prev, 1))
   }
   const goToToday = () => setSelectedDate(today)
 
@@ -189,6 +198,50 @@ function App() {
     }
   }
 
+  // ── Edit Expense ──
+  const handleStartEdit = (exp) => {
+    setEditingExpense(exp)
+    setEditAmount(String(exp.amount))
+    setEditLabel(exp.label || '')
+  }
+
+  const handleCancelEdit = () => {
+    setEditingExpense(null)
+    setEditAmount('')
+    setEditLabel('')
+  }
+
+  const handleSaveEdit = async () => {
+    if (!editingExpense) return
+    const newAmount = parseFloat(editAmount)
+    if (!newAmount || newAmount <= 0) return
+
+    const updates = { amount: newAmount }
+    if (editingExpense.category === 'others') {
+      updates.label = editLabel.trim() || 'others'
+    }
+
+    if (user) {
+      try {
+        await updateDoc(doc(db, 'users', user.uid, 'expenses', editingExpense.docId), updates)
+      } catch (err) {
+        console.error("Error updating document:", err)
+      }
+    } else {
+      setExpenses((prev) =>
+        prev.map((e) =>
+          e.id === editingExpense.id ? { ...e, ...updates } : e
+        )
+      )
+    }
+    handleCancelEdit()
+  }
+
+  const toggleEditMode = () => {
+    setEditMode((prev) => !prev)
+    handleCancelEdit()
+  }
+
   const handleLogout = () => {
     signOut(auth)
   }
@@ -243,19 +296,43 @@ function App() {
       <header className="app-header">
         <div className="header-left">
           <div className="app-logo">Spendo</div>
-          <div className="app-date">
-            <span className="date-icon">📅</span>
-            {formatDate(today)}
+          <div className="header-date-row">
+            <div className="app-date">
+              <span className="date-icon">📅</span>
+              {formatDate(today)}
+            </div>
+            <button
+              id="edit-mode-btn"
+              className={`edit-mode-btn ${editMode ? 'active' : ''}`}
+              onClick={toggleEditMode}
+            >
+              {editMode ? '✕ Done' : '✏️ Edit'}
+            </button>
           </div>
         </div>
         
         <div className="auth-buttons">
-          {!loadingAuth && user ? (
-            <div className="user-profile">
-              <span className="user-email">{user.email || user.displayName}</span>
-              <button className="auth-btn logout-btn" onClick={handleLogout}>Logout</button>
-            </div>
-          ) : !loadingAuth ? (
+          {!loadingAuth && user ? (() => {
+            const nickname = user.displayName || user.email.split('@')[0]
+            const initial = nickname.charAt(0).toUpperCase()
+            const photoURL = user.photoURL
+            return (
+              <div className="user-profile">
+                <div className="user-avatar-section">
+                  {photoURL ? (
+                    <img className="user-avatar" src={photoURL} alt={nickname} referrerPolicy="no-referrer" />
+                  ) : (
+                    <div className="user-avatar user-avatar-initials">{initial}</div>
+                  )}
+                  <div className="user-info">
+                    <span className="user-nickname">{nickname}</span>
+                    <span className="user-status">● Online</span>
+                  </div>
+                </div>
+                <button className="auth-btn logout-btn" onClick={handleLogout}>Logout</button>
+              </div>
+            )
+          })() : !loadingAuth ? (
             <>
               <button className="auth-btn login-btn" onClick={() => openAuth('login')}>Login</button>
               <button className="auth-btn signup-btn" onClick={() => openAuth('signup')}>Sign Up</button>
@@ -289,7 +366,12 @@ function App() {
         <>
           {/* ── Date Navigator ── */}
           <div className="date-navigator">
-            <button className="date-nav-btn" onClick={goToPrevDay} aria-label="Previous day">
+            <button
+              className={`date-nav-btn ${!canGoPrev ? 'disabled' : ''}`}
+              onClick={goToPrevDay}
+              disabled={!canGoPrev}
+              aria-label="Previous day"
+            >
               ‹
             </button>
             <div className="date-nav-center">
@@ -298,9 +380,9 @@ function App() {
               {selectedDate === yesterday && <span className="date-nav-badge yesterday">Yesterday</span>}
             </div>
             <button
-              className={`date-nav-btn ${selectedDate >= today ? 'disabled' : ''}`}
+              className={`date-nav-btn ${!canGoNext ? 'disabled' : ''}`}
               onClick={goToNextDay}
-              disabled={selectedDate >= today}
+              disabled={!canGoNext}
               aria-label="Next day"
             >
               ›
@@ -383,14 +465,66 @@ function App() {
               </div>
             ) : (
               selectedDateExpenses.map((exp) => (
-                <div className="expense-item" key={exp.id}>
-                  <span className={`cat-badge ${exp.category}`}>
-                    {CAT_ICONS[exp.category]} {exp.label || exp.category}
-                  </span>
-                  <span className="expense-amount">
-                    {exp.amount.toLocaleString()}
-                    <span className="currency">BDT</span>
-                  </span>
+                <div className={`expense-item ${editMode ? 'edit-active' : ''}`} key={exp.id}>
+                  {editingExpense && editingExpense.id === exp.id ? (
+                    /* ── Inline Edit Form ── */
+                    <div className="expense-edit-form">
+                      <span className={`cat-badge ${exp.category}`}>
+                        {CAT_ICONS[exp.category]} {exp.category}
+                      </span>
+                      {exp.category === 'others' && (
+                        <input
+                          className="edit-label-input"
+                          type="text"
+                          value={editLabel}
+                          onChange={(e) => setEditLabel(e.target.value)}
+                          placeholder="Label"
+                        />
+                      )}
+                      <input
+                        className="edit-amount-input"
+                        type="number"
+                        value={editAmount}
+                        onChange={(e) => setEditAmount(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSaveEdit()}
+                        min="0"
+                        autoFocus
+                      />
+                      <div className="edit-actions">
+                        <button className="edit-save-btn" onClick={handleSaveEdit}>✓</button>
+                        <button className="edit-cancel-btn" onClick={handleCancelEdit}>✕</button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* ── Normal View ── */
+                    <>
+                      <span className={`cat-badge ${exp.category}`}>
+                        {CAT_ICONS[exp.category]} {exp.label || exp.category}
+                      </span>
+                      <span className="expense-amount">
+                        {exp.amount.toLocaleString()}
+                        <span className="currency">BDT</span>
+                      </span>
+                      {editMode && (
+                        <div className="expense-edit-controls">
+                          <button
+                            className="expense-edit-btn"
+                            onClick={() => handleStartEdit(exp)}
+                            aria-label="Edit expense"
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            className="expense-delete-btn"
+                            onClick={() => handleDelete(exp)}
+                            aria-label="Delete expense"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               ))
             )}
