@@ -14,8 +14,24 @@ const CAT_ICONS = {
   others: '📦',
 }
 
+function toLocalDateStr(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 function getToday() {
-  return new Date().toISOString().split('T')[0]
+  return toLocalDateStr(new Date())
+}
+
+function getYesterday() {
+  const d = new Date()
+  d.setDate(d.getDate() - 1)
+  return toLocalDateStr(d)
+}
+
+function shiftDate(dateStr, days) {
+  const d = new Date(dateStr + 'T00:00:00')
+  d.setDate(d.getDate() + days)
+  return toLocalDateStr(d)
 }
 
 function getCurrentMonth() {
@@ -61,6 +77,7 @@ function App() {
   const [amounts, setAmounts] = useState({ snacks: '', meal: '', transportation: '', others: '' })
   const [othersLabel, setOthersLabel] = useState('')
   const [activeTab, setActiveTab] = useState('daily')
+  const [selectedDate, setSelectedDate] = useState(getToday())
 
   // Auth State
   const [user, setUser] = useState(null)
@@ -69,7 +86,21 @@ function App() {
   const [loadingAuth, setLoadingAuth] = useState(true)
 
   const today = getToday()
+  const yesterday = getYesterday()
   const currentMonth = getCurrentMonth()
+
+  // Can only add expenses for today or yesterday
+  const isEditable = selectedDate === today || selectedDate === yesterday
+
+  // Date navigation
+  const goToPrevDay = () => setSelectedDate((prev) => shiftDate(prev, -1))
+  const goToNextDay = () => {
+    // Don't allow navigating beyond today
+    if (selectedDate < today) {
+      setSelectedDate((prev) => shiftDate(prev, 1))
+    }
+  }
+  const goToToday = () => setSelectedDate(today)
 
   // 1. Listen for Auth State Changes
   useEffect(() => {
@@ -117,7 +148,7 @@ function App() {
 
     const entry = {
       id: Date.now(),
-      date: today,
+      date: selectedDate,
       category: cat,
       amount: value,
       ...(cat === 'others' && othersLabel.trim() ? { label: othersLabel.trim() } : {}),
@@ -167,9 +198,16 @@ function App() {
     setAuthModalOpen(true)
   }
 
-  // ── Today's expenses ──
-  const todayExpenses = expenses.filter((e) => e.date === today)
-  const dailyTotal = todayExpenses.reduce((sum, e) => sum + e.amount, 0)
+  // ── Selected date's expenses ──
+  const selectedDateExpenses = expenses.filter((e) => e.date === selectedDate)
+  const selectedDateTotal = selectedDateExpenses.reduce((sum, e) => sum + e.amount, 0)
+
+  // Label for selected date
+  const selectedDateLabel = selectedDate === today
+    ? "Today's"
+    : selectedDate === yesterday
+      ? "Yesterday's"
+      : formatShortDate(selectedDate) + "'s"
 
   // ── Monthly calculations ──
   const monthExpenses = expenses.filter((e) => e.date.startsWith(currentMonth))
@@ -249,67 +287,102 @@ function App() {
           ════════════════════════════════════ */}
       {activeTab === 'daily' && (
         <>
-          {/* Category Input Cards */}
-          <div className="category-inputs">
-            {CATEGORIES.map((cat) => (
-              <div className={`cat-input-card ${cat}`} key={cat}>
-                <div className="cat-input-header">
-                  <span className="cat-input-icon">{CAT_ICONS[cat]}</span>
-                  <span className="cat-input-name">{cat.charAt(0).toUpperCase() + cat.slice(1)}</span>
-                </div>
-                {cat === 'others' && (
-                  <input
-                    id="others-label"
-                    className="others-label-input"
-                    type="text"
-                    placeholder="What for?"
-                    value={othersLabel}
-                    onChange={(e) => setOthersLabel(e.target.value)}
-                  />
-                )}
-                <div className="cat-input-row">
-                  <input
-                    id={`amount-${cat}`}
-                    className="amount-input"
-                    type="number"
-                    placeholder="BDT"
-                    value={amounts[cat]}
-                    onChange={(e) => handleAmountChange(cat, e.target.value)}
-                    onKeyDown={(e) => handleKeyDown(e, cat)}
-                    min="0"
-                  />
-                  <button
-                    id={`add-${cat}`}
-                    className={`cat-add-btn ${cat}`}
-                    onClick={() => handleAdd(cat)}
-                  >
-                    Add
-                  </button>
-                </div>
-              </div>
-            ))}
+          {/* ── Date Navigator ── */}
+          <div className="date-navigator">
+            <button className="date-nav-btn" onClick={goToPrevDay} aria-label="Previous day">
+              ‹
+            </button>
+            <div className="date-nav-center">
+              <span className="date-nav-label">{formatDate(selectedDate)}</span>
+              {selectedDate === today && <span className="date-nav-badge">Today</span>}
+              {selectedDate === yesterday && <span className="date-nav-badge yesterday">Yesterday</span>}
+            </div>
+            <button
+              className={`date-nav-btn ${selectedDate >= today ? 'disabled' : ''}`}
+              onClick={goToNextDay}
+              disabled={selectedDate >= today}
+              aria-label="Next day"
+            >
+              ›
+            </button>
           </div>
+          {selectedDate !== today && (
+            <button className="go-today-btn" onClick={goToToday}>
+              ↩ Back to Today
+            </button>
+          )}
+
+          {/* Category Input Cards – only for today & yesterday */}
+          {isEditable && (
+            <div className="category-inputs">
+              {CATEGORIES.map((cat) => (
+                <div className={`cat-input-card ${cat}`} key={cat}>
+                  <div className="cat-input-header">
+                    <span className="cat-input-icon">{CAT_ICONS[cat]}</span>
+                    <span className="cat-input-name">{cat.charAt(0).toUpperCase() + cat.slice(1)}</span>
+                  </div>
+                  {cat === 'others' && (
+                    <input
+                      id="others-label"
+                      className="others-label-input"
+                      type="text"
+                      placeholder="What for?"
+                      value={othersLabel}
+                      onChange={(e) => setOthersLabel(e.target.value)}
+                    />
+                  )}
+                  <div className="cat-input-row">
+                    <input
+                      id={`amount-${cat}`}
+                      className="amount-input"
+                      type="number"
+                      placeholder="BDT"
+                      value={amounts[cat]}
+                      onChange={(e) => handleAmountChange(cat, e.target.value)}
+                      onKeyDown={(e) => handleKeyDown(e, cat)}
+                      min="0"
+                    />
+                    <button
+                      id={`add-${cat}`}
+                      className={`cat-add-btn ${cat}`}
+                      onClick={() => handleAdd(cat)}
+                    >
+                      Add
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Read-only notice for past dates */}
+          {!isEditable && (
+            <div className="readonly-notice">
+              <span className="readonly-icon">🔒</span>
+              <span>Viewing past expenses (read-only)</span>
+            </div>
+          )}
 
           {/* Daily Total */}
           <div className="total-card">
-            <div className="label">Today&apos;s Total</div>
+            <div className="label">{selectedDateLabel} Total</div>
             <div className="amount">
-              {dailyTotal.toLocaleString()}
+              {selectedDateTotal.toLocaleString()}
               <span className="currency">BDT</span>
             </div>
           </div>
 
           {/* Expense List */}
           <div className="expense-list">
-            <h2>📋 Today&apos;s Expenses</h2>
-            {todayExpenses.length === 0 ? (
+            <h2>📋 {selectedDateLabel} Expenses</h2>
+            {selectedDateExpenses.length === 0 ? (
               <div className="empty-state">
                 <div className="empty-icon">💸</div>
-                <p>No expenses yet today.</p>
-                <p>Add your first entry above!</p>
+                <p>No expenses recorded{selectedDate === today ? ' yet today' : ' for this day'}.</p>
+                {isEditable && <p>Add your first entry above!</p>}
               </div>
             ) : (
-              todayExpenses.map((exp) => (
+              selectedDateExpenses.map((exp) => (
                 <div className="expense-item" key={exp.id}>
                   <span className={`cat-badge ${exp.category}`}>
                     {CAT_ICONS[exp.category]} {exp.label || exp.category}
@@ -318,13 +391,6 @@ function App() {
                     {exp.amount.toLocaleString()}
                     <span className="currency">BDT</span>
                   </span>
-                  <button
-                    className="delete-btn"
-                    onClick={() => handleDelete(exp)}
-                    aria-label={`Delete ${exp.category} expense`}
-                  >
-                    ✕
-                  </button>
                 </div>
               ))
             )}
