@@ -133,14 +133,30 @@
 }
 
 .app-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.app-logo-icon {
+  height: 46px;
+  width: 46px;
+  object-fit: contain;
+  border-radius: 8px;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.15));
+  flex-shrink: 0;
+}
+
+.app-logo-text {
   font-size: 32px;
   font-weight: 700;
   letter-spacing: -1px;
+  line-height: 1;
   background: linear-gradient(135deg, var(--accent-light), var(--accent));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  margin-bottom: 4px;
 }
 
 .app-date {
@@ -1033,7 +1049,12 @@
     align-items: center;
   }
 
-  .app-logo {
+  .app-logo-icon {
+    height: 28px;
+    width: 28px;
+  }
+
+  .app-logo-text {
     font-size: 26px;
   }
 
@@ -1117,7 +1138,12 @@
    RESPONSIVE – Large Screen (≥1025px)
    ═══════════════════════════════════════════ */
 @media (min-width: 1025px) {
-  .app-logo {
+  .app-logo-icon {
+    height: 42px;
+    width: 42px;
+  }
+
+  .app-logo-text {
     font-size: 38px;
   }
 

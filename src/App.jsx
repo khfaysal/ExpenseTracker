@@ -3,6 +3,7 @@ import { auth, db } from './firebase'
 import { onAuthStateChanged, signOut } from 'firebase/auth'
 import { collection, query, onSnapshot, addDoc, deleteDoc, updateDoc, doc } from 'firebase/firestore'
 import AuthModal from './components/AuthModal'
+import appFavicon from './assets/favIcon.png'
 import './App.css'
 
 const CATEGORIES = ['snacks', 'meal', 'transportation', 'others']
@@ -295,7 +296,10 @@ function App() {
       {/* ── Header ── */}
       <header className="app-header">
         <div className="header-left">
-          <div className="app-logo">Spendo</div>
+          <div className="app-logo">
+            <img className="app-logo-icon" src={appFavicon} alt="" />
+            <span className="app-logo-text">Spendo</span>
+          </div>
           <div className="app-date">
             <span className="date-icon">📅</span>
             {formatDate(today)}
