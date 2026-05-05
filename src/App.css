@@ -159,12 +159,6 @@
   font-size: 16px;
 }
 
-/* ── Header Date Row with Edit Button ── */
-.header-date-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
 
 .edit-mode-btn {
   display: inline-flex;
@@ -527,10 +521,17 @@
   font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 12px;
+  margin-bottom: 0;
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.expense-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
 }
 
 .expense-item {

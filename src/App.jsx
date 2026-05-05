@@ -296,18 +296,9 @@ function App() {
       <header className="app-header">
         <div className="header-left">
           <div className="app-logo">Spendo</div>
-          <div className="header-date-row">
-            <div className="app-date">
-              <span className="date-icon">📅</span>
-              {formatDate(today)}
-            </div>
-            <button
-              id="edit-mode-btn"
-              className={`edit-mode-btn ${editMode ? 'active' : ''}`}
-              onClick={toggleEditMode}
-            >
-              {editMode ? '✕ Done' : '✏️ Edit'}
-            </button>
+          <div className="app-date">
+            <span className="date-icon">📅</span>
+            {formatDate(today)}
           </div>
         </div>
         
@@ -456,7 +447,16 @@ function App() {
 
           {/* Expense List */}
           <div className="expense-list">
-            <h2>📋 {selectedDateLabel} Expenses</h2>
+            <div className="expense-list-header">
+              <h2>📋 {selectedDateLabel} Expenses</h2>
+              <button
+                id="edit-mode-btn"
+                className={`edit-mode-btn ${editMode ? 'active' : ''}`}
+                onClick={toggleEditMode}
+              >
+                {editMode ? '✕ Done' : '✏️ Edit'}
+              </button>
+            </div>
             {selectedDateExpenses.length === 0 ? (
               <div className="empty-state">
                 <div className="empty-icon">💸</div>
