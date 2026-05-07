@@ -969,6 +969,105 @@
 .breakdown-bar.transportation { background: var(--cat-transport); }
 .breakdown-bar.others { background: var(--cat-others); }
 
+/* ── Others Detail Panel ── */
+.breakdown-item.clickable {
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  margin: 0 -8px;
+  padding: 12px 8px;
+  transition: background 0.2s ease;
+}
+
+.breakdown-item.clickable:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.others-expand-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--cat-others);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: rotate(0deg);
+  line-height: 1;
+  margin-left: 2px;
+}
+
+.others-expand-icon.open {
+  transform: rotate(90deg);
+}
+
+.others-detail-panel {
+  margin: 8px 0 4px 0;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--cat-others);
+  border-radius: var(--radius-md);
+  animation: othersSlideIn 0.3s ease;
+}
+
+@keyframes othersSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    max-height: 500px;
+  }
+}
+
+.others-detail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.others-detail-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.others-detail-row:first-child {
+  padding-top: 0;
+}
+
+.others-detail-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  text-transform: capitalize;
+}
+
+.others-detail-bullet {
+  color: var(--cat-others);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.others-detail-amount {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.others-detail-amount .currency {
+  font-weight: 400;
+  color: var(--text-muted);
+  font-size: 11px;
+  margin-left: 2px;
+}
+
 /* ── Daily history list ── */
 .daily-history {
   background: var(--bg-card);

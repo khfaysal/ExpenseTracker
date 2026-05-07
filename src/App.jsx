@@ -86,6 +86,9 @@ function App() {
   const [editAmount, setEditAmount] = useState('')
   const [editLabel, setEditLabel] = useState('')
 
+  // Others detail panel (monthly view)
+  const [othersDetailOpen, setOthersDetailOpen] = useState(false)
+
   // Auth State
   const [user, setUser] = useState(null)
   const [authModalOpen, setAuthModalOpen] = useState(false)
@@ -275,6 +278,18 @@ function App() {
   }, {})
 
   const maxBreakdown = Math.max(...Object.values(monthlyBreakdown), 1)
+
+  // ── Others detail breakdown (merged by label) ──
+  const othersExpenses = monthExpenses.filter((e) => e.category === 'others')
+  const othersDetailMap = {}
+  othersExpenses.forEach((e) => {
+    const label = (e.label || 'others').toLowerCase().trim()
+    if (!othersDetailMap[label]) {
+      othersDetailMap[label] = { label: e.label || 'Others', amount: 0 }
+    }
+    othersDetailMap[label].amount += e.amount
+  })
+  const othersDetailList = Object.values(othersDetailMap).sort((a, b) => b.amount - a.amount)
 
   // ── Daily totals for the month (for history) ──
   const dailyTotalsMap = {}
@@ -567,12 +582,22 @@ function App() {
                 <h3>Category Breakdown</h3>
                 {CATEGORIES.map((cat) => (
                   <div key={cat}>
-                    <div className="breakdown-item">
+                    <div
+                      className={`breakdown-item ${cat === 'others' && othersDetailList.length > 0 ? 'clickable' : ''}`}
+                      onClick={() => {
+                        if (cat === 'others' && othersDetailList.length > 0) {
+                          setOthersDetailOpen((prev) => !prev)
+                        }
+                      }}
+                    >
                       <div className="breakdown-left">
                         <span className={`breakdown-dot ${cat}`}></span>
                         <span className="breakdown-cat">
                           {CAT_ICONS[cat]} {cat}
                         </span>
+                        {cat === 'others' && othersDetailList.length > 0 && (
+                          <span className={`others-expand-icon ${othersDetailOpen ? 'open' : ''}`}>›</span>
+                        )}
                       </div>
                       <span className="breakdown-amount">
                         {monthlyBreakdown[cat].toLocaleString()}
@@ -587,6 +612,23 @@ function App() {
                         }}
                       ></div>
                     </div>
+                    {/* Others detail panel */}
+                    {cat === 'others' && othersDetailOpen && othersDetailList.length > 0 && (
+                      <div className="others-detail-panel">
+                        {othersDetailList.map((item, idx) => (
+                          <div className="others-detail-row" key={idx}>
+                            <span className="others-detail-label">
+                              <span className="others-detail-bullet">•</span>
+                              {item.label}
+                            </span>
+                            <span className="others-detail-amount">
+                              {item.amount.toLocaleString()}
+                              <span className="currency">BDT</span>
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
